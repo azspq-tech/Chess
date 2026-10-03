@@ -783,15 +783,29 @@ function applyMoveToBoard(board: (Piece | null)[][], move: Move): void {
   }
 }
 
-export function getBestMove(state: GameState, depth: number = 3): Move | null {
+export type Difficulty = 'easy' | 'medium' | 'hard';
+
+export function getBestMove(state: GameState, difficulty: Difficulty = 'hard'): Move | null {
   const moves = getAllLegalMoves(state.board, state.currentTurn, state.enPassantTarget);
   if (moves.length === 0) return null;
+
+  // Difficulty settings
+  const depthMap: Record<Difficulty, number> = { easy: 1, medium: 2, hard: 3 };
+  const randomnessMap: Record<Difficulty, number> = { easy: 0.4, medium: 0.15, hard: 0.0 };
+  
+  const depth = depthMap[difficulty];
+  const randomness = randomnessMap[difficulty];
+
+  // Easy mode: sometimes just pick a random move
+  if (Math.random() < randomness) {
+    return moves[Math.floor(Math.random() * moves.length)];
+  }
 
   const isMaximizing = state.currentTurn === 'white';
   let bestMove: Move | null = null;
   let bestEval = isMaximizing ? -Infinity : Infinity;
 
-  // Add some randomness for variety
+  // Add slight randomness for variety in move ordering
   const shuffled = [...moves].sort(() => Math.random() - 0.5);
 
   for (const move of shuffled) {

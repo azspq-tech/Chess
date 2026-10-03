@@ -6,6 +6,7 @@ import {
   PieceType,
   PieceColor,
   Piece,
+  Difficulty,
   PIECE_SYMBOLS,
   PIECE_VALUES,
   createInitialGameState,
@@ -65,6 +66,9 @@ function useChessClock(initialTime: number, enabled: boolean) {
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
+  if (seconds < 10) {
+    return `${mins}:${secs.toString().padStart(2, '0')}.${Math.floor((seconds % 1) * 10)}`;
+  }
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
@@ -100,15 +104,18 @@ export default function App() {
   const [legalMoves, setLegalMoves] = useState<Position[]>([]);
   const [flipped, setFlipped] = useState(false);
   const [gameMode, setGameMode] = useState<'pvp' | 'bot'>('pvp');
+  const [botDifficulty, setBotDifficulty] = useState<Difficulty>('medium');
   const [botThinking, setBotThinking] = useState(false);
   const [pendingPromotion, setPendingPromotion] = useState<{ move: Move; state: GameState } | null>(null);
   const [lastMove, setLastMove] = useState<{ from: Position; to: Position } | null>(null);
   const [timerEnabled, setTimerEnabled] = useState(false);
-  const [timerMinutes, setTimerMinutes] = useState(5);
+  const [customMinutes, setCustomMinutes] = useState(5);
+  const [customSeconds, setCustomSeconds] = useState(0);
   const [gameOver, setGameOver] = useState<string | null>(null);
   const [historyScrollRef, setHistoryScrollRef] = useState<HTMLDivElement | null>(null);
 
-  const clock = useChessClock(timerMinutes * 60, timerEnabled);
+  const totalSeconds = customMinutes * 60 + customSeconds;
+  const clock = useChessClock(totalSeconds, timerEnabled);
   const moveListRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll move history
@@ -137,8 +144,10 @@ export default function App() {
   useEffect(() => {
     if (gameMode === 'bot' && gameState.currentTurn === 'black' && !gameState.isCheckmate && !gameState.isStalemate && !pendingPromotion) {
       setBotThinking(true);
+      // Delay based on difficulty for more realistic feel
+      const delay = botDifficulty === 'easy' ? 300 : botDifficulty === 'medium' ? 500 : 700;
       const timer = setTimeout(() => {
-        const bestMove = getBestMove(gameState, 3);
+        const bestMove = getBestMove(gameState, botDifficulty);
         if (bestMove) {
           const newState = makeMove(gameState, bestMove);
           setGameState(newState);
@@ -152,10 +161,10 @@ export default function App() {
           if (timerEnabled) clock.switchTurn('white');
         }
         setBotThinking(false);
-      }, 500);
+      }, delay);
       return () => clearTimeout(timer);
     }
-  }, [gameState, gameMode, pendingPromotion]);
+  }, [gameState, gameMode, botDifficulty, pendingPromotion]);
 
   const handleSquareClick = useCallback((row: number, col: number) => {
     if (gameState.isCheckmate || gameState.isStalemate || pendingPromotion) return;
@@ -417,7 +426,7 @@ export default function App() {
       {/* Mobile: Top Panel / Desktop: Left Side */}
       <div className="w-full lg:w-auto flex flex-col lg:flex-col items-center lg:items-start gap-2 p-2 lg:p-4 lg:h-full lg:justify-center">
         {/* Game Mode Selector */}
-        <div className="flex gap-2 mb-1">
+        <div className="flex gap-2 mb-1 flex-wrap">
           <button
             onClick={() => { setGameMode('pvp'); handleNewGame(); }}
             className={`px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all
@@ -434,25 +443,105 @@ export default function App() {
           </button>
         </div>
 
-        {/* Timer */}
-        <div className="flex gap-2 items-center">
+        {/* Bot Difficulty (only show when bot mode is active) */}
+        {gameMode === 'bot' && (
+          <div className="flex gap-1.5 items-center">
+            <span className="text-gray-400 text-xs">Difficulty:</span>
+            <button
+              onClick={() => setBotDifficulty('easy')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all
+                ${botDifficulty === 'easy' ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+            >
+              🟢 Easy
+            </button>
+            <button
+              onClick={() => setBotDifficulty('medium')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all
+                ${botDifficulty === 'medium' ? 'bg-yellow-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+            >
+              🟡 Medium
+            </button>
+            <button
+              onClick={() => setBotDifficulty('hard')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all
+                ${botDifficulty === 'hard' ? 'bg-red-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+            >
+              🔴 Hard
+            </button>
+          </div>
+        )}
+
+        {/* Custom Timer */}
+        <div className="flex gap-2 items-center flex-wrap">
           <button
             onClick={() => { setTimerEnabled(!timerEnabled); clock.reset(); }}
             className={`px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all
               ${timerEnabled ? 'bg-orange-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
           >
-            ⏱️ {timerEnabled ? `${timerMinutes}min` : 'Clock'}
+            ⏱️ {timerEnabled ? 'ON' : 'Clock'}
           </button>
           {timerEnabled && (
-            <select
-              value={timerMinutes}
-              onChange={(e) => { setTimerMinutes(Number(e.target.value)); clock.reset(); }}
-              className="bg-gray-700 text-white text-xs rounded px-2 py-1.5"
-            >
-              <option value={3}>3 min</option>
-              <option value={5}>5 min</option>
-              <option value={10}>10 min</option>
-            </select>
+            <div className="flex items-center gap-1 flex-wrap">
+              {/* Quick presets */}
+              <button
+                onClick={() => { setCustomMinutes(1); setCustomSeconds(0); clock.reset(); }}
+                className={`px-1.5 py-1 rounded text-[10px] font-medium transition-all
+                  ${customMinutes === 1 && customSeconds === 0 ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
+              >
+                1m
+              </button>
+              <button
+                onClick={() => { setCustomMinutes(3); setCustomSeconds(0); clock.reset(); }}
+                className={`px-1.5 py-1 rounded text-[10px] font-medium transition-all
+                  ${customMinutes === 3 && customSeconds === 0 ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
+              >
+                3m
+              </button>
+              <button
+                onClick={() => { setCustomMinutes(5); setCustomSeconds(0); clock.reset(); }}
+                className={`px-1.5 py-1 rounded text-[10px] font-medium transition-all
+                  ${customMinutes === 5 && customSeconds === 0 ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
+              >
+                5m
+              </button>
+              <button
+                onClick={() => { setCustomMinutes(10); setCustomSeconds(0); clock.reset(); }}
+                className={`px-1.5 py-1 rounded text-[10px] font-medium transition-all
+                  ${customMinutes === 10 && customSeconds === 0 ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
+              >
+                10m
+              </button>
+              {/* Custom input */}
+              <div className="flex items-center gap-0.5 ml-1">
+                <input
+                  type="number"
+                  min={0}
+                  max={60}
+                  value={customMinutes}
+                  onChange={(e) => {
+                    const val = Math.max(0, Math.min(60, Number(e.target.value) || 0));
+                    setCustomMinutes(val);
+                    clock.reset();
+                  }}
+                  className="w-10 bg-gray-700 text-white text-xs rounded px-1 py-1 text-center border border-gray-600 focus:border-orange-400 focus:outline-none"
+                />
+                <span className="text-gray-500 text-[10px]">m</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={59}
+                  step={15}
+                  value={customSeconds}
+                  onChange={(e) => {
+                    const val = Math.max(0, Math.min(59, Number(e.target.value) || 0));
+                    setCustomSeconds(val);
+                    clock.reset();
+                  }}
+                  className="w-10 bg-gray-700 text-white text-xs rounded px-1 py-1 text-center border border-gray-600 focus:border-orange-400 focus:outline-none"
+                />
+                <span className="text-gray-500 text-[10px]">s</span>
+              </div>
+            </div>
           )}
         </div>
 
