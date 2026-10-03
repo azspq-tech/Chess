@@ -423,8 +423,8 @@ export default function App() {
         <PromotionModal color={pendingPromotion.state.currentTurn} onSelect={handlePromotion} />
       )}
 
-      {/* Mobile: Top Panel / Desktop: Left Side */}
-      <div className="w-full lg:w-auto flex flex-col lg:flex-col items-center lg:items-start gap-2 p-2 lg:p-4 lg:h-full lg:justify-center">
+      {/* Mobile: Top Panel / Desktop: Left Side - Fixed Width */}
+      <div className="w-full lg:w-56 xl:w-64 flex-shrink-0 flex flex-col items-center lg:items-start gap-2 p-2 lg:p-4 lg:h-full lg:justify-center">
         {/* Game Mode Selector */}
         <div className="flex gap-2 mb-1 flex-wrap">
           <button
@@ -443,106 +443,55 @@ export default function App() {
           </button>
         </div>
 
-        {/* Bot Difficulty (only show when bot mode is active) */}
-        {gameMode === 'bot' && (
-          <div className="flex gap-1.5 items-center">
-            <span className="text-gray-400 text-xs">Difficulty:</span>
-            <button
-              onClick={() => setBotDifficulty('easy')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all
-                ${botDifficulty === 'easy' ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-            >
-              🟢 Easy
-            </button>
-            <button
-              onClick={() => setBotDifficulty('medium')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all
-                ${botDifficulty === 'medium' ? 'bg-yellow-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-            >
-              🟡 Medium
-            </button>
-            <button
-              onClick={() => setBotDifficulty('hard')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all
-                ${botDifficulty === 'hard' ? 'bg-red-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-            >
-              🔴 Hard
-            </button>
-          </div>
-        )}
+        {/* Bot Difficulty Dropdown (always visible, disabled when not in bot mode) */}
+        <div className="flex gap-2 items-center w-full">
+          <span className="text-gray-400 text-xs whitespace-nowrap">Bot:</span>
+          <select
+            value={botDifficulty}
+            onChange={(e) => setBotDifficulty(e.target.value as Difficulty)}
+            disabled={gameMode !== 'bot'}
+            className="flex-1 bg-gray-700 text-white text-xs rounded-lg px-2 py-1.5 border border-gray-600 focus:border-emerald-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <option value="easy">🟢 Easy</option>
+            <option value="medium">🟡 Medium</option>
+            <option value="hard">🔴 Hard</option>
+          </select>
+        </div>
 
-        {/* Custom Timer */}
-        <div className="flex gap-2 items-center flex-wrap">
+        {/* Timer Controls */}
+        <div className="flex gap-2 items-center w-full">
           <button
             onClick={() => { setTimerEnabled(!timerEnabled); clock.reset(); }}
-            className={`px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all
+            className={`px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap
               ${timerEnabled ? 'bg-orange-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
           >
-            ⏱️ {timerEnabled ? 'ON' : 'Clock'}
+            ⏱️ {timerEnabled ? 'ON' : 'OFF'}
           </button>
-          {timerEnabled && (
-            <div className="flex items-center gap-1 flex-wrap">
-              {/* Quick presets */}
-              <button
-                onClick={() => { setCustomMinutes(1); setCustomSeconds(0); clock.reset(); }}
-                className={`px-1.5 py-1 rounded text-[10px] font-medium transition-all
-                  ${customMinutes === 1 && customSeconds === 0 ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
-              >
-                1m
-              </button>
-              <button
-                onClick={() => { setCustomMinutes(3); setCustomSeconds(0); clock.reset(); }}
-                className={`px-1.5 py-1 rounded text-[10px] font-medium transition-all
-                  ${customMinutes === 3 && customSeconds === 0 ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
-              >
-                3m
-              </button>
-              <button
-                onClick={() => { setCustomMinutes(5); setCustomSeconds(0); clock.reset(); }}
-                className={`px-1.5 py-1 rounded text-[10px] font-medium transition-all
-                  ${customMinutes === 5 && customSeconds === 0 ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
-              >
-                5m
-              </button>
-              <button
-                onClick={() => { setCustomMinutes(10); setCustomSeconds(0); clock.reset(); }}
-                className={`px-1.5 py-1 rounded text-[10px] font-medium transition-all
-                  ${customMinutes === 10 && customSeconds === 0 ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
-              >
-                10m
-              </button>
-              {/* Custom input */}
-              <div className="flex items-center gap-0.5 ml-1">
-                <input
-                  type="number"
-                  min={0}
-                  max={60}
-                  value={customMinutes}
-                  onChange={(e) => {
-                    const val = Math.max(0, Math.min(60, Number(e.target.value) || 0));
-                    setCustomMinutes(val);
-                    clock.reset();
-                  }}
-                  className="w-10 bg-gray-700 text-white text-xs rounded px-1 py-1 text-center border border-gray-600 focus:border-orange-400 focus:outline-none"
-                />
-                <span className="text-gray-500 text-[10px]">m</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={59}
-                  step={15}
-                  value={customSeconds}
-                  onChange={(e) => {
-                    const val = Math.max(0, Math.min(59, Number(e.target.value) || 0));
-                    setCustomSeconds(val);
-                    clock.reset();
-                  }}
-                  className="w-10 bg-gray-700 text-white text-xs rounded px-1 py-1 text-center border border-gray-600 focus:border-orange-400 focus:outline-none"
-                />
-                <span className="text-gray-500 text-[10px]">s</span>
-              </div>
-            </div>
-          )}
+          <select
+            value={`${customMinutes}:${customSeconds}`}
+            onChange={(e) => {
+              const [m, s] = e.target.value.split(':').map(Number);
+              setCustomMinutes(m);
+              setCustomSeconds(s);
+              clock.reset();
+            }}
+            disabled={!timerEnabled}
+            className="flex-1 bg-gray-700 text-white text-xs rounded-lg px-2 py-1.5 border border-gray-600 focus:border-orange-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <option value="1:0">1 min</option>
+            <option value="2:0">2 min</option>
+            <option value="3:0">3 min</option>
+            <option value="5:0">5 min</option>
+            <option value="7:0">7 min</option>
+            <option value="10:0">10 min</option>
+            <option value="15:0">15 min</option>
+            <option value="30:0">30 min</option>
+            <option value="0:30">30 sec</option>
+            <option value="1:30">1:30</option>
+            <option value="2:30">2:30</option>
+            <option value="3:30">3:30</option>
+            <option value="5:30">5:30</option>
+          </select>
         </div>
 
         {/* Status */}
@@ -580,8 +529,8 @@ export default function App() {
         )}
       </div>
 
-      {/* Chess Board */}
-      <div className="flex-shrink-0 flex items-center justify-center p-1 md:p-2">
+      {/* Chess Board - Centered with fixed side panels */}
+      <div className="flex-1 flex items-center justify-center p-1 md:p-2 min-w-0">
         <div
           className="grid grid-rows-8 border-2 border-gray-600 rounded-sm shadow-2xl overflow-hidden"
           style={{
@@ -593,8 +542,8 @@ export default function App() {
         </div>
       </div>
 
-      {/* Desktop Sidebar / Mobile Bottom Panel */}
-      <div className="w-full lg:w-72 xl:w-80 flex flex-col gap-2 p-2 lg:p-4 lg:h-full lg:overflow-hidden">
+      {/* Desktop Sidebar / Mobile Bottom Panel - Fixed Width */}
+      <div className="w-full lg:w-72 xl:w-80 flex-shrink-0 flex flex-col gap-2 p-2 lg:p-4 lg:h-full lg:overflow-hidden">
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
           <button
